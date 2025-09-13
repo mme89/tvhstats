@@ -29,8 +29,22 @@ defmodule TVHStats.Subscriptions do
     Repo.all(query)
   end
 
+  @spec list_with_filters(integer(), integer(), map()) :: [Subscription.t()]
+  def list_with_filters(page \\ 1, size \\ 20, filters \\ %{}) do
+    query = SubscriptionQueries.get_paginated_with_filters(page, size, filters)
+
+    Repo.all(query)
+  end
+
   def count() do
     query = SubscriptionQueries.get_count()
+
+    Repo.one(query)
+  end
+
+  @spec count_with_filters(map()) :: integer()
+  def count_with_filters(filters \\ %{}) do
+    query = SubscriptionQueries.get_count_with_filters(filters)
 
     Repo.one(query)
   end
@@ -80,6 +94,15 @@ defmodule TVHStats.Subscriptions do
     )
   end
 
+  def get_count_and_duration_for_last_n(field, last_n_days) do
+    field
+    |> SubscriptionQueries.get_play_count_and_duration(last_n_days)
+    |> Repo.all()
+    |> Enum.map(
+      &Map.update!(&1, "duration", fn d -> d |> Decimal.round(0, :floor) |> Decimal.to_integer() end)
+    )
+  end
+
   def get_activity_for_last_n(last_n_days) do
     last_n_days
     |> SubscriptionQueries.get_play_activity()
@@ -102,5 +125,40 @@ defmodule TVHStats.Subscriptions do
     last_n_days
     |> SubscriptionQueries.get_weekday_activity()
     |> Repo.all()
+  end
+
+  @spec reset_all() :: {integer(), nil | [term()]}
+  def reset_all() do
+    Repo.delete_all(Subscription)
+  end
+
+  def get_top_channels(last_n_days \\ 30) do
+    get_plays_for_last_n(:channel, last_n_days)
+  end
+
+  def get_top_users(last_n_days \\ 30) do
+    get_plays_for_last_n(:user, last_n_days)
+  end
+
+  def get_stream_type_distribution(last_n_days \\ 30) do
+    last_n_days
+    |> SubscriptionQueries.get_stream_type_distribution()
+    |> Repo.all()
+    |> Enum.map(fn {type, count} -> %{type: type, count: count} end)
+  end
+
+  def get_channel_watch_time(last_n_days \\ 30) do
+    get_duration_for_last_n(:channel, last_n_days)
+  end
+
+  def get_average_session_duration(last_n_days \\ 30) do
+    result = last_n_days
+    |> SubscriptionQueries.get_average_session_duration()
+    |> Repo.one()
+
+    case result do
+      %{avg_duration: nil} -> 0
+      %{avg_duration: avg} -> Decimal.to_float(avg) |> Float.round(0) |> trunc()
+    end
   end
 end

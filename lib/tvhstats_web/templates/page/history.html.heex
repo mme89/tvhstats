@@ -1,4 +1,65 @@
-<h3 class="py-4 text-white">History</h3>
+<h3 class="text-white">History</h3>
+
+<div class="mb-4">
+  <%= form_for :reset, Routes.page_path(@conn, :reset_history), [method: :post], fn _f -> %>
+    <button type="submit" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900" onclick="return confirm('Are you sure you want to reset all history? This action cannot be undone.')">
+      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+      </svg>
+      Reset History
+    </button>
+  <% end %>
+</div>
+
+<div class="mb-6">
+  <form action={Routes.page_path(@conn, :history)} method="get" class="space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div>
+        <label for="q" class="block text-sm font-medium text-gray-300 mb-1">Search</label>
+        <input type="text" id="q" name="q" value={@q} placeholder="Channel, user, IP, or client" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+      </div>
+
+      <div>
+        <label for="channel" class="block text-sm font-medium text-gray-300 mb-1">Channel</label>
+        <input type="text" id="channel" name="channel" value={@channel} placeholder="Filter by channel" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+      </div>
+
+      <div>
+        <label for="user" class="block text-sm font-medium text-gray-300 mb-1">User</label>
+        <input type="text" id="user" name="user" value={@user} placeholder="Filter by user" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+      </div>
+
+      <div>
+        <label for="status" class="block text-sm font-medium text-gray-300 mb-1">Status</label>
+        <select id="status" name="status" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-500">
+          <option value="all" selected={@status == "all"}>All</option>
+          <option value="active" selected={@status == "active"}>Active</option>
+          <option value="finished" selected={@status == "finished"}>Finished</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label for="date_from" class="block text-sm font-medium text-gray-300 mb-1">Date From</label>
+        <input type="date" id="date_from" name="date_from" value={@date_from} class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+      </div>
+
+      <div>
+        <label for="date_to" class="block text-sm font-medium text-gray-300 mb-1">Date To</label>
+        <input type="date" id="date_to" name="date_to" value={@date_to} class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <button type="submit" class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900">
+        Search
+      </button>
+      <a href={Routes.page_path(@conn, :history)} class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900">Clear Filters</a>
+    </div>
+  </form>
+</div>
+
 <div class="overflow-x-auto relative rounded-lg">
     <table class="w-full text-sm text-left text-gray-400">
         <thead class="text-xs uppercase bg-gray-700 text-gray-400">
@@ -66,40 +127,40 @@
 </div>
 
 <div class="flex items-center w-full mt-2 justify-end">
-  <span class="text-sm text-gray-700 dark:text-gray-400">
+  <span class="text-sm text-gray-400">
     Showing
-    <span class="font-semibold text-gray-900 dark:text-white">
+    <span class="font-semibold text-white">
     <%= (@page - 1) * @page_size + 1 %>
     </span>
     to
-    <span class="font-semibold text-gray-900 dark:text-white">
+    <span class="font-semibold text-white">
       <%= get_last_item(@page, @page_size, @total_items) %>
     </span>
     of
-    <span class="font-semibold text-gray-900 dark:text-white">
+    <span class="font-semibold text-white">
       <%= @total_items %>
     </span>
     Entries
   </span>
   <div class="flex ml-2">
     <%= if @prev_page > 0 do %>
-    <a href={"/history?page=#{@prev_page}&size=#{@page_size}"} class="inline-flex items-center py-2 px-4 text-sm font-medium text-white bg-gray-800 rounded-l hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+    <a href={Routes.page_path(@conn, :history, page: @prev_page, size: @page_size, q: @q, date_from: @date_from, date_to: @date_to, channel: @channel, user: @user, status: @status)} class="inline-flex items-center py-2 px-4 text-sm font-medium text-white bg-gray-800 rounded-l hover:bg-gray-900">
         <svg aria-hidden="true" class="mr-2 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
         Prev
     </a>
     <% else %>
-    <button disabled class="inline-flex items-center py-2 px-4 text-sm font-medium text-white bg-gray-800 rounded-l hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+    <button disabled class="inline-flex items-center py-2 px-4 text-sm font-medium text-gray-400 bg-gray-800 rounded-l">
         <svg aria-hidden="true" class="mr-2 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd"></path></svg>
         Prev
     </button>
     <% end %>
     <%= if @show_next_page do %>
-    <a href={"/history?page=#{@next_page}&size=#{@page_size}"} class="inline-flex items-center py-2 px-4 text-sm font-medium text-white bg-gray-800 rounded-r border-0 border-l border-gray-700 hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+    <a href={Routes.page_path(@conn, :history, page: @next_page, size: @page_size, q: @q, date_from: @date_from, date_to: @date_to, channel: @channel, user: @user, status: @status)} class="inline-flex items-center py-2 px-4 text-sm font-medium text-gray-400 bg-gray-800 rounded-r border-0 border-l border-gray-700 hover:bg-gray-900">
         Next
         <svg aria-hidden="true" class="ml-2 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
     </a>
     <% else %>
-    <button disabled class="inline-flex items-center py-2 px-4 text-sm font-medium text-white bg-gray-800 rounded-r border-0 border-l border-gray-700 hover:bg-gray-900 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white">
+    <button disabled class="inline-flex items-center py-2 px-4 text-sm font-medium text-gray-400 bg-gray-800 rounded-r border-0 border-l border-gray-700">
         Next
         <svg aria-hidden="true" class="ml-2 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
     </button>

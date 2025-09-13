@@ -18,7 +18,9 @@ defmodule TVHStatsWeb.Router do
     pipe_through :browser
 
     live "/", HomeLive.Home, :index
+    live "/channels", ChannelsLive, :index
     get "/history", PageController, :history
+    post "/history/reset", PageController, :reset_history
     get "/icons/:path", IconsController, :get_icon
     get "/graphs", PageController, :get_graphs
   end

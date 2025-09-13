@@ -8,10 +8,18 @@ defmodule TVHStatsWeb.IconsController do
     if File.exists?(icon_path) do
       send_download(conn, {:file, icon_path})
     else
-      send_download(
-        conn,
-        {:file, Application.app_dir(:tvhstats, "priv") <> "/static/images/missing.png"}
-      )
+      # Fallback: try any extension for this basename (handles non-png cached files)
+      base = Path.rootname(path)
+      matches = Path.wildcard("#{icons_folder}/#{base}.*")
+
+      case matches do
+        [match | _] -> send_download(conn, {:file, match})
+        _ ->
+          send_download(
+            conn,
+            {:file, Application.app_dir(:tvhstats, "priv") <> "/static/images/missing.png"}
+          )
+      end
     end
   end
 end

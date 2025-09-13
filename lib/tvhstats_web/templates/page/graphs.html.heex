@@ -1,7 +1,21 @@
-<h3 class="py-4 text-white">Graphs</h3>
+<h3 class="text-white">Graphs</h3>
+
+<div class="mb-6">
+  <form action={Routes.page_path(@conn, :get_graphs)} method="get" class="flex items-center gap-4">
+    <label for="days" class="text-white font-medium">Time Range:</label>
+    <select id="days" name="days" onchange="this.form.submit()" class="bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-500">
+      <option value="7" selected={@selected_days == 7}>Last 7 days</option>
+      <option value="30" selected={@selected_days == 30}>Last 30 days</option>
+      <option value="90" selected={@selected_days == 90}>Last 90 days</option>
+      <option value="180" selected={@selected_days == 180}>Last 180 days</option>
+      <option value="365" selected={@selected_days == 365}>Last year</option>
+    </select>
+  </form>
+</div>
+
 <div class="flex flex-col gap-4">
   <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-full p-4">
-    <span class="text-white">Daily play count</span>
+    <span class="text-white">Daily play count (Last <%= @selected_days %> days)</span>
     <div class="w-full h-48 max-h-48">
       <canvas id="lineChart"></canvas>
     </div>
@@ -9,16 +23,54 @@
 
   <div class="flex gap-4">
      <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-1/2 p-4">
-      <span class="text-white">Play count by day of the week</span>
+      <span class="text-white">Play count by day of the week (Last <%= @selected_days %> days)</span>
       <div class="w-full h-48 max-h-48">
         <canvas id="weekdayPlaysChart"></canvas>
       </div>
     </div>
     <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-1/2 p-4">
-      <span class="text-white">Play count by hour of day (Shown in UTC)</span>
+      <span class="text-white">Play count by hour of day (Shown in UTC, Last <%= @selected_days %> days)</span>
       <div class="w-full h-48 max-h-48">
         <canvas id="hourlyPlaysChart"></canvas>
       </div>
+    </div>
+  </div>
+
+  <div class="flex gap-4">
+    <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-1/2 p-4">
+      <span class="text-white">Top Channels (Last <%= @selected_days %> days)</span>
+      <div class="w-full h-48 max-h-48">
+        <canvas id="topChannelsChart"></canvas>
+      </div>
+    </div>
+    <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-1/2 p-4">
+      <span class="text-white">Top Users (Last <%= @selected_days %> days)</span>
+      <div class="w-full h-48 max-h-48">
+        <canvas id="topUsersChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-4">
+    <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-1/2 p-4">
+      <span class="text-white">Channel Watch Time (Last <%= @selected_days %> days)</span>
+      <div class="w-full h-48 max-h-48">
+        <canvas id="channelWatchTimeChart"></canvas>
+      </div>
+    </div>
+    <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-1/2 p-4">
+      <div class="flex flex-col items-center justify-center h-full">
+        <span class="text-white text-lg mb-2">Average Session Duration</span>
+        <span class="text-3xl font-bold text-blue-400"><%= format_duration(@average_session_duration) %></span>
+        <span class="text-gray-400 text-sm mt-1">Last <%= @selected_days %> days</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto bg-gray-900 relative rounded-lg w-full p-4">
+    <span class="text-white">Stream Type Distribution (Last <%= @selected_days %> days)</span>
+    <div class="w-full h-48 max-h-48">
+      <canvas id="streamTypeChart"></canvas>
     </div>
   </div>
 </div>
@@ -143,6 +195,166 @@
           beginAtZero: true
         },
       },
+    },
+  });
+</script>
+
+<script type="text/javascript">
+  var topChannelsData = <%= raw(Jason.encode!(fetch_chart_data @top_channels)) %>
+  var topChannelsLabels = <%= raw(Jason.encode!(fetch_chart_labels @top_channels)) %>
+
+  var topChannelsCtx = document.getElementById("topChannelsChart").getContext("2d");
+
+  var topChannelsChart = new Chart(topChannelsCtx, {
+    type: "bar",
+    data: {
+      labels: topChannelsLabels,
+      datasets: [{
+        label: "Plays",
+        backgroundColor: "rgba(52, 152, 219, 0.8)",
+        borderColor: "rgba(41, 128, 185, 1.0)",
+        borderWidth: 2,
+        data: topChannelsData,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        },
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    },
+  });
+</script>
+
+<script type="text/javascript">
+  var topUsersData = <%= raw(Jason.encode!(fetch_chart_data @top_users)) %>
+  var topUsersLabels = <%= raw(Jason.encode!(fetch_chart_labels @top_users)) %>
+
+  var topUsersCtx = document.getElementById("topUsersChart").getContext("2d");
+
+  var topUsersChart = new Chart(topUsersCtx, {
+    type: "bar",
+    data: {
+      labels: topUsersLabels,
+      datasets: [{
+        label: "Plays",
+        backgroundColor: "rgba(46, 204, 113, 0.8)",
+        borderColor: "rgba(39, 174, 96, 1.0)",
+        borderWidth: 2,
+        data: topUsersData,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        },
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    },
+  });
+</script>
+
+<script type="text/javascript">
+  var streamTypeData = <%= raw(Jason.encode!(@stream_type_distribution)) %>
+
+  var streamTypeLabels = streamTypeData.map(function(item) { return item.type; });
+  var streamTypeValues = streamTypeData.map(function(item) { return item.count; });
+
+  var streamTypeCtx = document.getElementById("streamTypeChart").getContext("2d");
+
+  var streamTypeChart = new Chart(streamTypeCtx, {
+    type: "doughnut",
+    data: {
+      labels: streamTypeLabels,
+      datasets: [{
+        data: streamTypeValues,
+        backgroundColor: [
+          "rgba(155, 89, 182, 0.8)",
+          "rgba(230, 126, 34, 0.8)",
+          "rgba(231, 76, 60, 0.8)",
+          "rgba(52, 152, 219, 0.8)"
+        ],
+        borderColor: [
+          "rgba(142, 68, 173, 1.0)",
+          "rgba(211, 84, 0, 1.0)",
+          "rgba(192, 57, 43, 1.0)",
+          "rgba(41, 128, 185, 1.0)"
+        ],
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 20
+          }
+        }
+      }
+    },
+  });
+</script>
+
+<script type="text/javascript">
+  var channelWatchTimeData = <%= raw(Jason.encode!(fetch_chart_data @channel_watch_time)) %>
+  var channelWatchTimeLabels = <%= raw(Jason.encode!(fetch_chart_labels @channel_watch_time)) %>
+
+  var channelWatchTimeCtx = document.getElementById("channelWatchTimeChart").getContext("2d");
+
+  var channelWatchTimeChart = new Chart(channelWatchTimeCtx, {
+    type: "horizontalBar",
+    data: {
+      labels: channelWatchTimeLabels,
+      datasets: [{
+        label: "Watch Time (seconds)",
+        backgroundColor: "rgba(231, 76, 60, 0.8)",
+        borderColor: "rgba(192, 57, 43, 1.0)",
+        borderWidth: 2,
+        data: channelWatchTimeData,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0
+          }
+        },
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
     },
   });
 </script>

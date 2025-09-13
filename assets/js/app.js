@@ -25,6 +25,27 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+// --- Theme init (always dark) ---
+function initTheme() {
+  document.body.classList.remove("light")
+}
+
+function initFlashMessages() {
+  // Auto-hide flash messages after 5 seconds
+  const flashMessages = document.querySelectorAll('.alert')
+  flashMessages.forEach(message => {
+    if (message.textContent.trim()) { // Only hide if message has content
+      setTimeout(() => {
+        message.style.transition = 'opacity 0.5s ease-out'
+        message.style.opacity = '0'
+        setTimeout(() => {
+          message.style.display = 'none'
+        }, 500)
+      }, 5000)
+    }
+  })
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   params: {
@@ -44,4 +65,10 @@ liveSocket.connect()
 // >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
+
+// Initialize theme and flash messages after hydration
+window.addEventListener("DOMContentLoaded", () => {
+  initTheme()
+  initFlashMessages()
+})
 

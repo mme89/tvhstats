@@ -144,3 +144,29 @@ table {
     }
   }
 }
+
+/* Theme variables */
+:root {
+  --bg: #3d4047; /* darker slate */
+  --panel: #6f6d6c; /* softer dark panel */
+  --panel-border: #b6bcc540; /* slate-400/25 */
+  --text: #e6edf3; /* light text */
+  --muted: #b8a794; /* slate-400 */
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.panel {
+  background-color: var(--panel);
+  border-color: var(--panel-border);
+  border-width: 1px;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.muted {
+  color: var(--muted);
+}

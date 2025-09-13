@@ -5,17 +5,43 @@ defmodule TVHStatsWeb.PageController do
 
   @history_params_schema %{
     page: [type: :integer, default: 1, number: [min: 1]],
-    size: [type: :integer, default: 20, in: [3, 20, 50, 100]]
+    size: [type: :integer, default: 20, in: [3, 20, 50, 100]],
+    q: [type: :string, default: ""],
+    date_from: [type: :string, default: ""],
+    date_to: [type: :string, default: ""],
+    channel: [type: :string, default: ""],
+    user: [type: :string, default: ""],
+    status: [type: :string, default: "all", in: ["all", "active", "finished"]]
   }
 
   def history(conn, params) do
-    with {:ok, %{page: page, size: size}} <- Tarams.cast(params, @history_params_schema) do
+    with {:ok, validated_params} <- Tarams.cast(params, @history_params_schema) do
+      %{
+        page: page,
+        size: size,
+        q: q,
+        date_from: date_from,
+        date_to: date_to,
+        channel: channel,
+        user: user,
+        status: status
+      } = validated_params
+
       timezone = Application.get_env(:tvhstats, :tvh_tz)
 
-      subscriptions =
-        Enum.map(TVHStats.Subscriptions.list(page, size), &parse_subscription(&1, timezone))
+      filters = %{
+        "q" => q,
+        "date_from" => date_from,
+        "date_to" => date_to,
+        "channel" => channel,
+        "user" => user,
+        "status" => status
+      }
 
-      subscription_count = TVHStats.Subscriptions.count()
+      subscriptions =
+        Enum.map(TVHStats.Subscriptions.list_with_filters(page, size, filters), &parse_subscription(&1, timezone))
+
+      subscription_count = TVHStats.Subscriptions.count_with_filters(filters)
 
       conn
       |> assign(:page_title, "History")
@@ -26,6 +52,12 @@ defmodule TVHStatsWeb.PageController do
       |> assign(:prev_page, page - 1)
       |> assign(:show_next_page, show_next_page?(page + 1, subscription_count, size))
       |> assign(:total_items, subscription_count)
+      |> assign(:q, q)
+      |> assign(:date_from, date_from)
+      |> assign(:date_to, date_to)
+      |> assign(:channel, channel)
+      |> assign(:user, user)
+      |> assign(:status, status)
       |> render("history.html")
     else
       {:error, errors} ->
@@ -33,14 +65,37 @@ defmodule TVHStatsWeb.PageController do
     end
   end
 
-  def get_graphs(conn, _params) do
+  def get_graphs(conn, params) do
+    # Parse date range from params, default to last 30 days
+    days = case params["days"] do
+      nil -> 30
+      "" -> 30
+      days_str -> case Integer.parse(days_str) do
+        {days, _} when days > 0 and days <= 365 -> days
+        _ -> 30
+      end
+    end
 
     conn
     |> assign(:page_title, "Graphs")
-    |> assign(:daily_play_count, get_daily_play_count())
-    |> assign(:hourly_play_count, get_hourly_play_count())
-    |> assign(:weekday_play_count, get_weekday_play_count())
+    |> assign(:selected_days, days)
+    |> assign(:daily_play_count, get_daily_play_count(days))
+    |> assign(:hourly_play_count, get_hourly_play_count(days))
+    |> assign(:weekday_play_count, get_weekday_play_count(days))
+    |> assign(:top_channels, get_top_channels(days))
+    |> assign(:top_users, get_top_users(days))
+    |> assign(:stream_type_distribution, get_stream_type_distribution(days))
+    |> assign(:channel_watch_time, get_channel_watch_time(days))
+    |> assign(:average_session_duration, get_average_session_duration(days))
     |> render("graphs.html")
+  end
+
+  def reset_history(conn, _params) do
+    {deleted_count, _} = TVHStats.Subscriptions.reset_all()
+
+    conn
+    |> put_flash(:info, "History reset successfully. #{deleted_count} records deleted.")
+    |> redirect(to: Routes.page_path(conn, :history))
   end
 
   defp show_next_page?(next_page, total_items, page_size) do
@@ -73,13 +128,13 @@ defmodule TVHStatsWeb.PageController do
     }
   end
 
-  defp get_daily_play_count() do
+  def get_daily_play_count(days \\ 30) do
     plays =
-      30
+      days
       |> TVHStats.Subscriptions.get_daily_plays()
       |> Enum.into(%{})
 
-    0..29
+    0..(days - 1)
     |> Stream.map(&Utils.datetime_n_days_ago/1)
     |> Stream.map(fn date -> {date, Calendar.strftime(date, "%d %b %Y")} end)
     |> Stream.map(fn
@@ -89,9 +144,9 @@ defmodule TVHStatsWeb.PageController do
     |> Enum.sort_by(&Map.get(&1, :date), {:asc, Date})
   end
 
-  defp get_hourly_play_count() do
+  def get_hourly_play_count(days \\ 30) do
     plays =
-      30
+      days
       |> TVHStats.Subscriptions.get_hourly_plays()
       |> Enum.map(fn {hour, value}-> {trunc(hour), value} end)
       |> Enum.into(%{})
@@ -99,9 +154,9 @@ defmodule TVHStatsWeb.PageController do
     Enum.map(0..23, fn hour -> %{label: String.pad_leading("#{hour}", 2, "0"), value: Map.get(plays, hour, 0)} end)
   end
 
-  defp get_weekday_play_count() do
+  def get_weekday_play_count(days \\ 30) do
     plays =
-      30
+      days
       |> TVHStats.Subscriptions.get_weekday_plays()
       |> Enum.map(fn {hour, value}-> {trunc(hour), value} end)
       |> Enum.into(%{})
@@ -116,4 +171,33 @@ defmodule TVHStatsWeb.PageController do
   defp get_dow(5), do: "Friday"
   defp get_dow(6), do: "Saturday"
   defp get_dow(7), do: "Sunday"
+
+  def get_top_channels(days \\ 30) do
+    TVHStats.Subscriptions.get_top_channels(days)
+    |> Enum.map(fn %{"channel" => channel, "plays" => plays} ->
+      %{label: channel, value: plays}
+    end)
+  end
+
+  def get_top_users(days \\ 30) do
+    TVHStats.Subscriptions.get_top_users(days)
+    |> Enum.map(fn %{"user" => user, "plays" => plays} ->
+      %{label: user, value: plays}
+    end)
+  end
+
+  def get_stream_type_distribution(days \\ 30) do
+    TVHStats.Subscriptions.get_stream_type_distribution(days)
+  end
+
+  def get_channel_watch_time(days \\ 30) do
+    TVHStats.Subscriptions.get_channel_watch_time(days)
+    |> Enum.map(fn %{"channel" => channel, "duration" => duration} ->
+      %{label: channel, value: duration}
+    end)
+  end
+
+  def get_average_session_duration(days \\ 30) do
+    TVHStats.Subscriptions.get_average_session_duration(days)
+  end
 end

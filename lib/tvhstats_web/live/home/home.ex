@@ -5,8 +5,8 @@ defmodule TVHStatsWeb.HomeLive.Home do
 
   use TVHStatsWeb, :live_view
 
-  alias TVHStats.Components
   alias TVHStats.Subscriptions
+  alias TVHStats.API.Client, as: APIClient
   alias TVHStats.Utils.Seconds
 
   @default_timezone "Etc/UTC"
@@ -15,47 +15,35 @@ defmodule TVHStatsWeb.HomeLive.Home do
   def mount(_params, _session, socket) do
     socket =
       if connected?(socket) do
-        TVHStatsWeb.Endpoint.subscribe(@subscriptions_topic)
+  Phoenix.PubSub.subscribe(TVHStats.PubSub, @subscriptions_topic)
+  TVHStatsWeb.Endpoint.subscribe(@subscriptions_topic)
 
-        socket
-        |> assign(play_count_channel_30d: Subscriptions.get_plays_for_last_n(:channel, 30))
-        |> assign(play_count_user_30d: Subscriptions.get_plays_for_last_n(:user, 30))
-        |> assign(play_duration_channel_30d: Subscriptions.get_duration_for_last_n(:channel, 30))
-        |> assign(play_duration_user_30d: Subscriptions.get_duration_for_last_n(:user, 30))
-        |> assign(play_activity_30d: Subscriptions.get_activity_for_last_n(30))
+  socket
+  |> assign(channel_usage_30d: Subscriptions.get_count_and_duration_for_last_n(:channel, 30))
+  |> assign(user_usage_30d: Subscriptions.get_count_and_duration_for_last_n(:user, 30))
+  |> assign(play_activity_30d: Subscriptions.get_activity_for_last_n(30))
       else
         socket
-        |> assign(play_count_channel_30d: [])
-        |> assign(play_count_user_30d: [])
-        |> assign(play_duration_channel_30d: [])
-        |> assign(play_duration_user_30d: [])
+  |> assign(channel_usage_30d: [])
+  |> assign(user_usage_30d: [])
         |> assign(play_activity_30d: [])
       end
+
+    # Seed Active streams immediately from API
+    tz = Application.get_env(:tvhstats, :tvh_tz)
+    now_streams = APIClient.get_streams()
+    now_entries = Map.get(now_streams, "entries", [])
+    parsed_entries = Enum.map(now_entries, &parse_subscription(&1, tz))
 
     {
       :ok,
       socket
       |> assign(page_title: "Home")
-      |> assign(timezone: Application.get_env(:tvhstats, :tvh_tz))
-      |> assign(active_subscriptions: nil)
-      |> assign(subscriptions_summary: nil)
-      |> assign(
-        statistics: [
-          %{
-            title: "Most watched channels",
-            value: :play_count_channel_30d,
-            type: "channel_count"
-          },
-          %{
-            title: "Most watched channels",
-            value: :play_duration_channel_30d,
-            type: "channel_duration"
-          },
-          %{title: "Most active users", value: :play_count_user_30d, type: "user_count"},
-          %{title: "Most active users", value: :play_duration_user_30d, type: "user_duration"},
-          %{title: "Most popular channels", value: :play_activity_30d, type: "channel_activity"}
-        ]
-      )
+      |> assign(timezone: tz)
+      |> assign(active_subscriptions: parsed_entries)
+      |> assign(subscriptions_summary: get_subscriptions_summary(now_entries))
+  |> assign(server_info: APIClient.get_server_info())
+  |> assign(server_host: Application.get_env(:tvhstats, :tvh_host))
     }
   end
 
@@ -82,7 +70,8 @@ defmodule TVHStatsWeb.HomeLive.Home do
          timezone
        ) do
     subscription
-    |> Map.put("in", parse_bandwidth(bytes_in))
+  |> Map.put("in_bps", bytes_in)
+  |> Map.put("in", parse_bandwidth(bytes_in))
     |> Map.put("total_in", parse_transfer(total_bytes_in))
     |> Map.put("started_at", parse_timestamp(start, timezone))
     |> Map.put("runtime", parse_runtime(start))
@@ -99,7 +88,8 @@ defmodule TVHStatsWeb.HomeLive.Home do
          timezone
        ) do
     subscription
-    |> Map.put("in", parse_bandwidth(bytes_in))
+  |> Map.put("in_bps", bytes_in)
+  |> Map.put("in", parse_bandwidth(bytes_in))
     |> Map.put("total_in", parse_transfer(total_bytes_in))
     |> Map.put("started_at", parse_timestamp(start, timezone))
     |> Map.put("runtime", parse_runtime(start))
@@ -130,7 +120,8 @@ defmodule TVHStatsWeb.HomeLive.Home do
         subscriptions,
         %{streams: 0, bandwidth: 0},
         fn sub, %{streams: s_acc, bandwidth: b_acc} ->
-          %{streams: s_acc + 1, bandwidth: b_acc + Map.get(sub, "in")}
+          raw_in = Map.get(sub, "in_bps") || Map.get(sub, "in") || 0
+          %{streams: s_acc + 1, bandwidth: b_acc + raw_in}
         end
       )
 
@@ -143,6 +134,10 @@ defmodule TVHStatsWeb.HomeLive.Home do
 
   def format_runtime(seconds) do
     Seconds.to_hh_mm_ss(seconds)
+  end
+
+  def format_duration(seconds) do
+    Seconds.to_hh_mm(seconds)
   end
 
   def encode_uri(channel) do

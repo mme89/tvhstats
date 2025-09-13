@@ -1,0 +1,13 @@
+<h3 class="text-white">Channels</h3>
+
+<div class="text-white pt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+  <%= for ch <- @channels do %>
+    <div class="panel flex items-center gap-3 p-2">
+      <img class="w-10 h-10 object-contain rounded bg-white p-1" alt={ch["name"]} src={"/icons/#{encode_uri(ch["name"])}.png"} />
+      <div class="truncate" title={ch["name"]}><%= ch["name"] %></div>
+    </div>
+  <% end %>
+  <%= if @channels == [] do %>
+    <div class="text-sm text-gray-400">No channels found</div>
+  <% end %>
+</div>

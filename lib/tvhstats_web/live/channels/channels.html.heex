@@ -1,0 +1,18 @@
+<h3 class="text-white">Channels</h3>
+
+<div class="text-white pt-2">
+  <ul class="divide-y divide-gray-800">
+    <%= for ch <- @channels do %>
+  <li class="flex items-center gap-3 px-2 py-2 rounded">
+        <span class="w-20 sm:w-24 shrink-0 text-gray-400 tabular-nums text-right"><%= ch["number"] %></span>
+  <div class="w-24 h-12 rounded p-1 flex items-center justify-center shrink-0">
+          <img class="max-h-full max-w-full object-contain" alt={ch["name"]} src={"/icons/#{encode_uri(ch["name"])}.png"} />
+        </div>
+  <div class="min-w-0 truncate"><%= ch["name"] %></div>
+      </li>
+    <% end %>
+    <%= if @channels == [] do %>
+      <li class="px-2 py-2 text-sm text-gray-400">No channels found</li>
+    <% end %>
+  </ul>
+</div>
