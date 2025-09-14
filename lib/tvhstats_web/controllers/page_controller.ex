@@ -2,6 +2,7 @@ defmodule TVHStatsWeb.PageController do
   use TVHStatsWeb, :controller
 
   alias TVHStats.Utils
+  alias TVHStats.API.Client, as: APIClient
 
   @history_params_schema %{
     page: [type: :integer, default: 1, number: [min: 1]],
@@ -28,6 +29,8 @@ defmodule TVHStatsWeb.PageController do
       } = validated_params
 
       timezone = Application.get_env(:tvhstats, :tvh_tz)
+
+      users = APIClient.get_users()
 
       filters = %{
         "q" => q,
@@ -58,6 +61,7 @@ defmodule TVHStatsWeb.PageController do
       |> assign(:channel, channel)
       |> assign(:user, user)
       |> assign(:status, status)
+      |> assign(:users, users)
       |> render("history.html")
     else
       {:error, errors} ->

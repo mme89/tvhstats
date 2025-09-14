@@ -39,3 +39,5 @@ npm-debug.log
 .env
 docker-compose.release.yml
 /icons/
+.DS_Store
+*.code-workspace

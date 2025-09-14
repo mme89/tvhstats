@@ -26,7 +26,12 @@
 
       <div>
         <label for="user" class="block text-sm font-medium text-gray-300 mb-1">User</label>
-        <input type="text" id="user" name="user" value={@user} placeholder="Filter by user" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500" />
+        <select id="user" name="user" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-gray-500">
+          <option value="" selected={@user == ""}>All users</option>
+          <%= for username <- @users do %>
+            <option value={username} selected={@user == username}><%= username %></option>
+          <% end %>
+        </select>
       </div>
 
       <div>

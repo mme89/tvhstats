@@ -192,6 +192,28 @@ defmodule TVHStats.API.Client do
     end
   end
 
+  @doc """
+  Returns list of usernames from /api/access/entry/grid.
+  """
+  def get_users() do
+    res =
+      "/access/entry/grid"
+      |> build_request()
+      |> send_request()
+
+    case res do
+      {:ok, %{"entries" => entries}} when is_list(entries) ->
+        entries
+        |> Enum.map(& &1["username"])
+        |> Enum.filter(& &1)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      _ ->
+        []
+    end
+  end
+
   defp normalize_channel(%{"name" => _} = ch) do
     Map.update(ch, "number", parse_int(ch["number"]), fn v -> parse_int(v) end)
   end
